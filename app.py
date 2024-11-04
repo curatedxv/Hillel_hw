@@ -76,7 +76,10 @@ def register():
             (login, password, ipn, full_name, contacs, photo, passport) 
             VALUES (?, ?, ?, ?, ?, ?, ?)''',
   (form_data['login'], form_data['password'], form_data['ipn'], form_data['full_name'], form_data['contacts'], form_data['photo'], form_data['passport']))
-        return redirect('/')
+        with Database('db1.db') as cur:
+            cur.execute('SELECT * FROM user')
+            user = cur.fetchall()
+            return render_template('register_sub.html', user=user)
 
 @app.route('/logout', methods=['GET', 'POST', 'DELETE'])
 def logout():

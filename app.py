@@ -182,7 +182,7 @@ def complain():
             (author, user, text, grade, contract)
             VALUES (?, ?, ?, ?, ?)''',
   (form_data['author'], form_data['user'], form_data['text'], form_data['grade'], form_data['contract']))
-            return 'dont complain piece of bullshit'
+            return render_template('complain_sub.html')
 
 @app.route('/compare', methods=['GET', 'PUT'])
 def compare():

@@ -176,7 +176,13 @@ def complain():
     if request.method == 'GET':
         return render_template('complain.html')
     if request.method == 'POST':
-        return 'POST'
+        with Database('db1.db') as cur:
+            form_data = request.form
+            cur.execute('''INSERT INTO feedback
+            (author, user, text, grade, contract)
+            VALUES (?, ?, ?, ?, ?)''',
+  (form_data['author'], form_data['user'], form_data['text'], form_data['grade'], form_data['contract']))
+            return 'dont complain piece of bullshit'
 
 @app.route('/compare', methods=['GET', 'PUT'])
 def compare():

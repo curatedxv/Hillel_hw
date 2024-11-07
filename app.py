@@ -1,8 +1,16 @@
 from sqlite3 import connect
-
+from functools import wraps
 from flask import Flask, request, render_template, redirect
 import sqlite3
+from flask import session
+from scipy.interpolate import insert
+from sympy.polys.polyconfig import query
+
+# Set the secret key to some random bytes. Keep this really secret!
 app = Flask(__name__)
+app.secret_key = 'SECRET'
+
+
 '''
 /login [GET, POST]
 
@@ -37,6 +45,15 @@ app = Flask(__name__)
 /compare [GET, PUT]
 '''
 
+
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not session.get('user_id', None):
+            return redirect('/login')
+        return func(*args, **kwargs)
+    return wrapper
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -63,6 +80,17 @@ def login():
     if request.method == 'GET':
         return render_template('login.html')
     if request.method == 'POST':
+        username = request.form['login']
+        password = request.form['password']
+
+        with Database('db1.db') as cur:
+            cur.execute('SELECT * FROM user WHERE login = ? AND password = ?', (username, password))
+            user = cur.fetchone()
+            if user:
+                session['user_id'] = user['login']
+                return 'Bine'
+            else:
+                return render_template('login.html', error='Invalid username or password')
         return 'POST'
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -82,22 +110,21 @@ def register():
             return render_template('register_sub.html', user=user)
 
 @app.route('/logout', methods=['GET', 'POST', 'DELETE'])
+@login_required
 def logout():
-    if request.method == 'GET':
-        return 'GET'
-    if request.method == 'POST':
-        return 'POST'
-    if request.method == 'DELETE':
-        return 'DELETE'
-
+    session.pop('user_id', None)
+    return redirect('/login')
 @app.route('/profile', methods=['GET', 'DELETE'])
+@login_required
 def profile():
     if request.method == 'GET':
-        return render_template('user.html')
+        fullname = session.get('user_id', None)
+        return render_template('user.html', fullname=fullname)
     if request.method == 'DELETE':
         return 'DELETE'
 
 @app.route('/profile/favouties', methods=['GET', 'POST', 'DELETE'])
+@login_required
 def favouties():
     if request.method == 'GET':
         return 'GET'
@@ -107,6 +134,7 @@ def favouties():
         return 'DELETE'
 
 @app.route('/profile/favouties/<favourite_id>', methods=['GET', 'DELETE'])
+@login_required
 def favourite(favourite_id):
     if request.method == 'GET':
         return f'GET {favourite_id}'
@@ -114,6 +142,7 @@ def favourite(favourite_id):
         return f'DELETE {favourite_id}'
 
 @app.route('/profile/search_history', methods=['GET', 'DELETE'])
+@login_required
 def search_history():
     if request.method == 'GET':
         return 'GET'
@@ -152,13 +181,23 @@ def leaser(leaser_id):
         return f'GET {leaser_id}'
 
 @app.route('/contracts', methods=['GET', 'POST'])
+@login_required
 def contracts():
     if request.method == 'GET':
         return 'GET'
     if request.method == 'POST':
-        return 'POST'
-
+        query = """insert into contract (text, start_date, end_date, leaser, taker, item) values (?, ?, ?, ?, ?, ?)"""
+        with Database('db1.db') as cur:
+            cur.execute('SELECT id FROM user WHERE login = ?')
+            my_id = cur.fetchone()['id']
+            form_data = request.form
+            taker = my_id
+            cur.execute('SELECT * FROM item WHERE id = ?')
+            leaser_id = cur.fetchone()['owner_id']
+            cur.execute(query, (form_data['text'], form_data['start_date'], form_data['end_date'], leaser_id, taker, form_data['item']))
+            return redirect('/contracts')
 @app.route('/contracts/<contract_id>', methods=['GET', 'PATCH', 'PUT'])
+@login_required
 def contract(contract_id):
     if request.method == 'GET':
         return f'GET {contract_id}'
@@ -175,6 +214,7 @@ def search():
         return 'POST'
 
 @app.route('/complain', methods=['GET', 'POST'])
+@login_required
 def complain():
     if request.method == 'GET':
         return render_template('complain.html')
@@ -188,6 +228,7 @@ def complain():
             return render_template('complain_sub.html')
 
 @app.route('/compare', methods=['GET', 'PUT'])
+@login_required
 def compare():
     if request.method == 'GET':
         return 'GET'

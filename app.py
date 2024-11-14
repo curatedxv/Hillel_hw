@@ -5,6 +5,7 @@ import sqlite3
 from flask import session
 from scipy.interpolate import insert
 from sympy.polys.polyconfig import query
+from tomlkit import value
 
 # Set the secret key to some random bytes. Keep this really secret!
 app = Flask(__name__)
@@ -45,6 +46,37 @@ app.secret_key = 'SECRET'
 /compare [GET, PUT]
 '''
 
+class db_handle:
+    def select(self, table_name, filter_dict=None):
+        if filter_dict is None:
+            filter_dict = {}
+
+        with Database('db1.db') as db_cur:
+            query = f"SELECT * FROM {table_name}"
+            if filter_dict:
+                query += f" WHERE "
+                itms = []
+                for k, v in filter_dict.items():
+                    itms.append(f"{k} = ?")
+                query += ' AND '.join(itms)
+                db_cur.execute(query, tuple(value for value in filter_dict.values()))
+                return db_cur.fetchall()
+
+    def insert(self, table_name, data_dict):
+        with Database('db1.db') as cur:
+            query = f"INSERT INTO {table_name} ("
+            query += ', '.join(data_dict.keys())
+            query += ") VALUES ("
+            query += ','.join(f':{itm}' for itm in data_dict.values())
+            query += ")"
+            cur.execute(query, data_dict)
+
+    def __init__(self, filename):
+        pass
+    def __enter__(self):
+        pass
+    def __exit__(self, type, value, traceback):
+        pass
 
 def login_required(func):
     @wraps(func)
@@ -71,6 +103,7 @@ class Database(object):
         self.con.commit()
         self.con.close()
 
+db_connector = db_handle('db1.db')
 @app.route('/')
 def hello_world():  # put application's code here
     return 'Hello World!'
@@ -82,15 +115,20 @@ def login():
     if request.method == 'POST':
         username = request.form['login']
         password = request.form['password']
-
-        with Database('db1.db') as cur:
-            cur.execute('SELECT * FROM user WHERE login = ? AND password = ?', (username, password))
-            user = cur.fetchone()
-            if user:
-                session['user_id'] = user['login']
-                return 'Bine'
-            else:
-                return render_template('login.html', error='Invalid username or password')
+        user_data = db_connector.select('user', {'login': username, 'password': password})
+        if user_data:
+            session['user_id'] = user_data[0]['id']
+            return redirect('/profile')
+        else:
+            return render_template('login.html')
+        #with Database('db1.db') as cur:
+        #    cur.execute('SELECT * FROM user WHERE login = ? AND password = ?', (username, password))
+        #    user = cur.fetchone()
+        #    if user:
+        #        session['user_id'] = user['login']
+        #        return 'Bine'
+        #    else:
+        #        return render_template('login.html', error='Invalid username or password')
         return 'POST'
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -98,12 +136,14 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')
     if request.method == 'POST':
-        with Database('db1.db') as cur:
-            form_data = request.form
-            cur.execute('''INSERT INTO user 
-            (login, password, ipn, full_name, contacs, photo, passport) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)''',
-  (form_data['login'], form_data['password'], form_data['ipn'], form_data['full_name'], form_data['contacts'], form_data['photo'], form_data['passport']))
+        db_connector.insert('user', {'login': request.form['login'], 'password': request.form['password'], 'ipn': request.form['ipn'], 'full_name': request.form['full_name'], 'contacs': request.form['contacts'], 'photo': request.form['photo'], 'passport': request.form['passport']})
+        #with Database('db1.db') as cur:
+            #form_data = request.form
+            #cur.execute('''INSERT INTO user
+            #(login, password, ipn, full_name, contacs, photo, passport)
+            #VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            #['login'], form_data['password'], form_data['ipn'], form_data['full_name'], form_data['contacts'], form_data['photo'], form_data['passport']))
+            #db_handle.insert()
         with Database('db1.db') as cur:
             cur.execute('SELECT * FROM user')
             user = cur.fetchall()

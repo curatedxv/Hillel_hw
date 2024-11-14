@@ -67,7 +67,7 @@ class db_handle:
             query = f"INSERT INTO {table_name} ("
             query += ', '.join(data_dict.keys())
             query += ") VALUES ("
-            query += ','.join(f':{itm}' for itm in data_dict.values())
+            query += ','.join(f':{itm}' for itm in data_dict.keys())
             query += ")"
             cur.execute(query, data_dict)
 

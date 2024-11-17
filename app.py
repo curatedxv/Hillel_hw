@@ -3,6 +3,11 @@ from functools import wraps
 from flask import Flask, request, render_template, redirect
 import sqlite3
 from flask import session
+from sqlalchemy import select
+
+import models
+from database import init_db, db_session
+from models import User, Item
 from scipy.interpolate import insert
 from sympy.polys.polyconfig import query
 from tomlkit import value
@@ -115,7 +120,9 @@ def login():
     if request.method == 'POST':
         username = request.form['login']
         password = request.form['password']
-        user_data = db_connector.select('user', {'login': username, 'password': password})
+        init_db()
+        query = select(models.User).where(models.User.login==username)
+        user_data =db_session.execute(query).first()
         if user_data:
             session['user_id'] = user_data[0]['id']
             return redirect('/profile')
@@ -136,7 +143,11 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')
     if request.method == 'POST':
-        db_connector.insert('user', {'login': request.form['login'], 'password': request.form['password'], 'ipn': request.form['ipn'], 'full_name': request.form['full_name'], 'contacs': request.form['contacts'], 'photo': request.form['photo'], 'passport': request.form['passport']})
+        form_data = request.form
+        init_db()
+        user = models.User(**form_data)
+        db_session.add(user)
+        db_session.commit()
         #with Database('db1.db') as cur:
             #form_data = request.form
             #cur.execute('''INSERT INTO user
@@ -191,18 +202,28 @@ def search_history():
 @app.route('/items',  methods=['GET', 'POST'])
 def items():
     if request.method == 'GET':
-        with Database('db1.db') as cur:
-            cur.execute('SELECT * FROM item')
-            items = cur.fetchall()
-            return render_template('items.html', items=items)
+        init_db()
+        items_query = select(models.Item)
+        items = list(db_session.execute(items_query).scalars())
+        db_session.commit()
+        return render_template('items.html', items=items)
+        #with Database('db1.db') as cur:
+        #    items = cur.fetchall()
+        #    return render_template('items.html', items=items)
     if request.method == 'POST':
-        with Database('db1.db') as cur:
-            form_data = request.form
-            cur.execute('''INSERT INTO item
-            (photo, name, description, price_hour, price_day, price_week, price_month)
-            VALUES (?, ?, ?, ?, ?, ?, ?)''',
-  (form_data['photo'], form_data['name'], form_data['description'], form_data['price_hour'], form_data['price_day'], form_data['price_week'], form_data['price_months']))
-            return redirect('/items')
+        init_db()
+        form_data = request.form
+        new_item = models.Item(**form_data)
+        db_session.add(new_item)
+        db_session.commit()
+
+        #with Database('db1.db') as cur:
+        #    form_data = request.form
+        #    cur.execute('''INSERT INTO item
+        #    (photo, name, description, price_hour, price_day, price_week, price_month)
+        #    VALUES (?, ?, ?, ?, ?, ?, ?)''',
+  #(form_data['photo'], form_data['name'], form_data['description'], form_data['price_hour'], form_data['price_day'], form_data['price_week'], form_data['price_months']))
+        return redirect('/items')
 
 @app.route('/items/<item_id>', methods=['GET', 'DELETE'])
 def item(item_id):

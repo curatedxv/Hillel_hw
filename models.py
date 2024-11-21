@@ -38,7 +38,8 @@ class Item(Base):
     price_week = Column(REAL, nullable=False)
     price_month = Column(REAL, nullable=False)
     owner = Column(String(50), nullable=True)
-    def __init__(self, photo, name, description, price_hour, price_day, price_week, price_months, owner):
+    time = Column(String(50), nullable=True)
+    def __init__(self, photo, name, description, price_hour, price_day, price_week, price_months, owner, time):
         self.photo = photo
         self.name = name
         self.description = description
@@ -47,5 +48,6 @@ class Item(Base):
         self.price_week = price_week
         self.price_month = price_months
         self.owner = owner
+        self.time = time
     def __repr__(self):
         return f'<Item {self.name!r}>'

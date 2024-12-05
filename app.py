@@ -4,6 +4,7 @@ from flask import Flask, request, render_template, redirect
 import sqlite3
 from flask import session
 from sqlalchemy import select
+import celery_tasks
 
 import models
 from database import init_db, db_session
@@ -296,6 +297,9 @@ def compare():
     if request.method == 'PUT':
         return 'PUT'
 
+@app.route('/add_task', methods=['GET'])
+def set_task():
+    worker.add.delay(1, 2)
 
 if __name__ == '__main__':
-    app.run(debug=True,  host="0.0.0.0")
+    app.run(debug=True,  host="0.0.0.0", port=5000)

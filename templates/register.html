@@ -6,5 +6,16 @@
 </head>
 <body>
 
+<form action="/register">
+    {% csrf_token %}
+    Username: <input type="text" name="username">
+    Password: <input type="text" name="password">
+    Name: <input type="text" name="first">
+    Lastname: <input type="text" name="lastname">
+    email: <input type="email" name="email">
+    <br>
+    <input type="submit">
+</form>
+
 </body>
 </html>

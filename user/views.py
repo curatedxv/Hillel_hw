@@ -1,7 +1,9 @@
 from django.contrib.auth import authenticate, logout
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login
+
 
 # Create your views here.
 def user_page(request):
@@ -13,13 +15,14 @@ def login_page(request):
     if request.method == 'GET':
         return render(request, 'login.html')
     else:
-        username = request.POST['username']
-        password = request.POST['password']
+        username = request.POST["username"]
+        password = request.POST["password"]
         user = authenticate(request, username=username, password=password)
-        if user.check_password(password):
+        if user is not None:
+            login(request, user)
             return HttpResponse('Login successful')
         else:
-            return HttpResponse('Login failed')
+            render(request, 'login.html')
 def register_page(request):
     if request.method == 'POST':
         username = request.POST['username']
